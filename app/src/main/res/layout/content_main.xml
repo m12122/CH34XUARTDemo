@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    app:layout_behavior="@string/appbar_scrolling_view_behavior"
+    android:background="@color/grey_light"
+    android:padding="@dimen/dp_5"
+    android:orientation="vertical"
+    >
+
+    <androidx.core.widget.NestedScrollView
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="4">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/rvDevice"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </androidx.core.widget.NestedScrollView>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="2"
+        android:background="@drawable/ll_round"
+        android:orientation="vertical"
+        android:padding="@dimen/dp_10"
+
+        >
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvReadCount"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_weight="1"
+                android:text="接收数据区"
+                android:textStyle="bold" />
+
+            <androidx.appcompat.widget.SwitchCompat
+                android:id="@+id/scRead"
+                android:layout_width="wrap_content"
+                android:layout_height="@dimen/dp_20"
+                android:checked="true"
+                android:text="HEX"
+                android:textOff="关"
+                android:textOn="开"
+                app:switchMinWidth="@dimen/dp_50"
+                app:switchPadding="@dimen/dp_5" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_marginTop="@dimen/dp_5"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tvReadData"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:background="@drawable/ll_border"
+                android:fadeScrollbars="false"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:scrollbars="vertical"
+                android:textColor="@color/black"
+                android:textSize="@dimen/sp_14" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:layout_marginStart="@dimen/dp_10"
+                android:orientation="horizontal">
+
+                <cn.wch.ch34xuartdemo.ui.CustomTextView
+                    android:id="@+id/tvClearRead"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:text="清空"
+                    android:textSize="@dimen/sp_14"
+                    app:layout_constraintBottom_toBottomOf="parent"
+                    app:layout_constraintStart_toStartOf="parent"
+                    app:layout_constraintTop_toTopOf="parent" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:weightSum="2">
+
+        <Button
+            android:id="@+id/button_save"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="存盘"
+            android:textAlignment="center"
+            android:textColor="@color/grey_light"></Button>
+
+        <Button
+            android:id="@+id/button_upload"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:text="上传"
+            android:textAlignment="center"
+            android:textColor="@color/grey_light"></Button>
+    </LinearLayout>
+</LinearLayout>
