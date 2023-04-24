@@ -16,23 +16,29 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.text.method.ScrollingMovementMethod;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import cn.wch.uartlib.WCHUARTManager;
 import cn.wch.uartlib.callback.IDataCallback;
@@ -51,6 +57,15 @@ import cn.wch.ch34xuartdemo.ui.CustomTextView;
 import cn.wch.ch34xuartdemo.ui.DeviceListDialog;
 import cn.wch.ch34xuartdemo.ui.GPIODialog;
 import cn.wch.ch34xuartdemo.utils.FormatUtil;
+import okhttp3.Call;
+import okhttp3.Callback;
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
+import okhttp3.ResponseBody;
 
 public class MainActivity extends AppCompatActivity {
     RecyclerView deviceRecyclerVIew;
@@ -71,7 +86,9 @@ public class MainActivity extends AppCompatActivity {
     boolean flag=false;
 
     //接收文件测试。文件默认保存在-->内部存储\Android\data\cn.wch.wchuartdemo\files\下
-    private static boolean FILE_TEST=false;
+    private static boolean FILE_TEST=true;
+
+    private static final String TAG = "okhttp";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -489,28 +506,28 @@ public class MainActivity extends AppCompatActivity {
                 //遍历已打开的设备列表中的设备
                 synchronized (devices){
                     Iterator<UsbDevice> iterator = devices.iterator();
-                    while (iterator.hasNext()){
+                    while (iterator.hasNext()) {
                         UsbDevice device = iterator.next();
+                        int serialCount = 0;
                         try {
-                            int serialCount = WCHUARTManager.getInstance().getSerialCount(device);
+                            serialCount = WCHUARTManager.getInstance().getSerialCount(device);
                         } catch (Exception e) {
                             e.printStackTrace();
                         }
-//                        //读取该设备每个串口的数据
-//                        for (int i = 0; i < serialCount; i++) {
-//                            try {
-//                                byte[] bytes = WCHUARTManager.getInstance().readData(device, i);
-//                                if(bytes!=null){
-//                                    //使用获取到的数据
-//                                    updateReadData(device,i,bytes,bytes.length);
-//
-//                                    //updateReadDataToFile(device,i,bytes,bytes.length);
-//                                }
-//                            } catch (ChipException e) {
-//                                //LogUtil.d(e.getMessage());
-//                                break;
-//                            }
-//                        }
+                        //读取该设备每个串口的数据
+                        for (int i = 0; i < serialCount; i++) {
+                            try {
+                                byte[] bytes = WCHUARTManager.getInstance().readData(device, i);
+                                if (bytes != null) {
+                                    //使用获取到的数据
+                                    updateReadData(device, i, bytes, bytes.length);
+                                    updateReadDataToFile(device,i,bytes,bytes.length);
+                                }
+                            } catch (Exception e) {
+                                //LogUtil.d(e.getMessage());
+                                break;
+                            }
+                        }
                     }
                 }
             }
@@ -531,6 +548,7 @@ public class MainActivity extends AppCompatActivity {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
+                //integer用于计读取到的字节数
                 Integer integer = readCountMap.get(FormatUtil.getSerialKey(usbDevice, serialNumber));
                 if(integer==null){
                     //不包含此key
@@ -641,5 +659,51 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
         }
+    }
+    public  void getRequest(View view){
+        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+                .connectTimeout(1000, TimeUnit.MILLISECONDS)
+                .build();
+    }
+    public void postFile() {
+        String url = "http://192.168.1.198:9102/file/upload";
+        //String url = "localhost:9102/file/upload";
+        OkHttpClient httpClient = new OkHttpClient.Builder().build();
+        File file = new File("/sdcard/Android/data/cn.wch.wchuartdemo/files/TestFile/CHIP_CH341_0.txt");
+        MediaType mediaType = MediaType.parse("text");
+        RequestBody fileBody = RequestBody.create(file,mediaType);
+        RequestBody requestBody = new MultipartBody.Builder()
+                .addFormDataPart("file",file.getName(),fileBody)
+                .build();
+        Request request = new Request.Builder().url(url).post(requestBody).build();
+        Call task = httpClient.newCall(request);
+        task.enqueue(new Callback() {
+            @Override
+            public void onFailure(@NotNull Call call,@NotNull IOException e) {
+                Log.d(TAG,"上传失败--> " + e.toString());
+            }
+
+            @Override
+            public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
+                int code = response.code();
+                Log.d(TAG,"code == "+code);
+                if(code == HttpURLConnection.HTTP_OK){
+                    ResponseBody body = response.body();
+                    if(body != null){
+                        String result = body.string();
+                        Log.d(TAG,"result ---> " + result);
+                    }
+                }
+            }
+        });
+    }
+    public void post(View view){
+        Thread uploadthread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                postFile();
+            }
+        });
+        uploadthread.start();
     }
 }

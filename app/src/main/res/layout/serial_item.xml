@@ -83,90 +83,7 @@
             android:textSize="12sp"
             />
     </LinearLayout>
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
 
-        android:orientation="horizontal"
-        >
-        <androidx.appcompat.widget.AppCompatCheckBox
-            android:id="@+id/cbDCD"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="DCD"
-            android:enabled="false"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:textSize="12sp"
-            />
-        <androidx.appcompat.widget.AppCompatCheckBox
-            android:id="@+id/cbDSR"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="DSR"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:enabled="false"
-            android:textSize="12sp"
-            />
-        <androidx.appcompat.widget.AppCompatCheckBox
-            android:id="@+id/cbCTS"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="CTS"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:enabled="false"
-            android:textSize="12sp"
-            />
-        <androidx.appcompat.widget.AppCompatCheckBox
-            android:id="@+id/cbRing"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="RING"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:enabled="false"
-            android:textSize="12sp"
-            />
-    </LinearLayout>
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-
-        android:orientation="horizontal"
-        >
-        <androidx.appcompat.widget.AppCompatCheckBox
-            android:id="@+id/cbOverrun"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Overrun Error"
-            android:enabled="false"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:textSize="12sp"
-            />
-        <androidx.appcompat.widget.AppCompatCheckBox
-            android:id="@+id/cbParity"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Parity Error"
-            android:minHeight="0dp"
-            android:minWidth="0dp"
-            android:enabled="false"
-            android:textSize="12sp"
-            />
-
-        <androidx.appcompat.widget.AppCompatCheckBox
-            android:id="@+id/cbFrame"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:enabled="false"
-            android:minWidth="0dp"
-            android:minHeight="0dp"
-            android:text="Frame Error"
-            android:textSize="12sp" />
-    </LinearLayout>
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -197,14 +114,7 @@
             android:layout_height="wrap_content"
             android:orientation="horizontal"
             >
-            <TextView
-                android:text="发送计数：0字节"
-                android:id="@+id/tvWriteCount"
-                android:layout_width="0dp"
-                android:layout_weight="1"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center"
-                />
+
             <androidx.appcompat.widget.SwitchCompat
                 android:id="@+id/scWrite"
                 android:layout_width="wrap_content"
@@ -224,13 +134,22 @@
             >
             <EditText
                 android:id="@+id/send_data"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
+                android:layout_weight="1"
                 android:layout_height="@dimen/dp_50"
                 android:gravity="start|top"
                 android:background="@drawable/ll_border"
                 android:hint="输入数据"
                 android:text="1234567890"
                 android:layout_marginTop="@dimen/dp_5"
+                />
+            <TextView
+                android:id="@+id/send_button"
+                android:layout_width="0dp"
+                android:layout_height="@dimen/dp_50"
+                android:layout_weight="1"
+                android:text="单次读取"
+                android:textAlignment="center"
                 />
         </LinearLayout>
 

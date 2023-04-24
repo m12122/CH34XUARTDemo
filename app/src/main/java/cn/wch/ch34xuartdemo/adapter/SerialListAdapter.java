@@ -7,6 +7,7 @@ import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
 import android.widget.CompoundButton;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -157,6 +158,15 @@ public class SerialListAdapter extends RecyclerView.Adapter<SerialListAdapter.My
                 }
             }
         });
+        holder.send_data.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                int result = sendData(serialEntity.getUsbDevice(), serialEntity.getSerialNumber());
+                if(result == -2){
+                    showToast("发送失败");
+                }
+            }
+        });
     }
 
     @Override
@@ -256,6 +266,7 @@ public class SerialListAdapter extends RecyclerView.Adapter<SerialListAdapter.My
         CustomTextView clearWrite;
         SwitchCompat scWrite;
         TextView writeCount;
+        Button send_data;
 
 
         EditText writeBuffer;
@@ -270,24 +281,25 @@ public class SerialListAdapter extends RecyclerView.Adapter<SerialListAdapter.My
             cbRTS=itemView.findViewById(R.id.cbRTS);
             cbBREAK=itemView.findViewById(R.id.cbBreak);
 
-            cbDCD=itemView.findViewById(R.id.cbDCD);
-            cbDSR=itemView.findViewById(R.id.cbDSR);
-            cbCTS=itemView.findViewById(R.id.cbCTS);
-            cbRING=itemView.findViewById(R.id.cbRing);
-
-            cbOverrun=itemView.findViewById(R.id.cbOverrun);
-            cbParity=itemView.findViewById(R.id.cbParity);
-            cbFrame=itemView.findViewById(R.id.cbFrame);
+//            cbDCD=itemView.findViewById(R.id.cbDCD);
+//            cbDSR=itemView.findViewById(R.id.cbDSR);
+//            cbCTS=itemView.findViewById(R.id.cbCTS);
+//            cbRING=itemView.findViewById(R.id.cbRing);
+//
+//            cbOverrun=itemView.findViewById(R.id.cbOverrun);
+//            cbParity=itemView.findViewById(R.id.cbParity);
+//            cbFrame=itemView.findViewById(R.id.cbFrame);
 
             queryError=itemView.findViewById(R.id.queryErrorStatus);
 
             write=itemView.findViewById(R.id.tvWrite);
             writeBuffer=itemView.findViewById(R.id.send_data);
-            writeCount=itemView.findViewById(R.id.tvWriteCount);
+//            writeCount=itemView.findViewById(R.id.tvWriteCount);
 
             clearWrite=itemView.findViewById(R.id.tvClearWrite);
 
             scWrite=itemView.findViewById(R.id.scWrite);
+            send_data = itemView.findViewById(R.id.send_button);
 
         }
     }
@@ -357,6 +369,19 @@ public class SerialListAdapter extends RecyclerView.Adapter<SerialListAdapter.My
 
     public void setWriteCount(int serialNumber,int newValue){
         writeCountMap.put(serialNumber,newValue);
+    }
+
+    public  int sendData(UsbDevice usbDevice,int serialNumber){ //单次读取发送对应数据
+        String string = "AA 00 22 00 00 22 DD";
+        byte[] data = string.getBytes();
+        try {
+            int write = WCHUARTManager.getInstance().writeData(usbDevice, serialNumber, data, data.length,2000);
+            return write;
+        } catch (Exception e) {
+            LogUtil.d(e.getMessage());
+
+        }
+        return -2;
     }
 
 
