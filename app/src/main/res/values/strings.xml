@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">CH34XUARTDemo</string>
+    <string name="app_name">资产盘点系统</string>
     <string name="title_activity_main2">MainActivity</string>
 
 
@@ -59,6 +59,12 @@
         <item>偶校验</item>
         <item>标志位</item>
         <item>空白位</item>
+    </string-array>
+    <string-array name="labnumber">
+        <item>BS-425</item>
+        <item>BS-422</item>
+        <item>BS-201</item>
+        <item>BS-210</item>
     </string-array>
     <!-- TODO: Remove or change this placeholder text -->
     <string name="hello_blank_fragment">Hello blank fragment</string>

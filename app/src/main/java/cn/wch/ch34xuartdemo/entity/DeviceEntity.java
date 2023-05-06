@@ -7,9 +7,9 @@ import java.util.ArrayList;
 public class DeviceEntity {
     private UsbDevice usbDevice;
     private String description;
-    private ArrayList<SerialEntity> serialEntities;
+    private SerialEntity serialEntities;
 
-    public DeviceEntity(UsbDevice usbDevice, String description, ArrayList<SerialEntity> serialEntities) {
+    public DeviceEntity(UsbDevice usbDevice, String description, SerialEntity serialEntities) {
         this.usbDevice = usbDevice;
         this.description = description;
         this.serialEntities = serialEntities;
@@ -23,7 +23,7 @@ public class DeviceEntity {
         return description;
     }
 
-    public ArrayList<SerialEntity> getSerialEntities() {
+    public SerialEntity getSerialEntities() {
         return serialEntities;
     }
 }

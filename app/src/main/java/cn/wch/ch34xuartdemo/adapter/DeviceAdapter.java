@@ -24,6 +24,7 @@ import cn.wch.ch34xuartdemo.entity.DeviceEntity;
 import cn.wch.ch34xuartdemo.entity.ModemEntity;
 import cn.wch.ch34xuartdemo.entity.ModemErrorEntity;
 import cn.wch.ch34xuartdemo.entity.SerialEntity;
+import cn.wch.ch34xuartdemo.MainActivity;
 
 public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.MyViewHolder> {
 
@@ -71,7 +72,7 @@ public class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.MyViewHold
         });
         //初始化recyclerview
         RecyclerView recyclerView = holder.recyclerView;
-        ArrayList<SerialEntity> serialEntities = entity.getSerialEntities();
+        SerialEntity serialEntities = entity.getSerialEntities();
         SerialListAdapter serialListAdapter=new SerialListAdapter(activity,serialEntities);
         maps.put(entity, serialListAdapter);
         recyclerView.setLayoutManager(new LinearLayoutManager(activity,LinearLayoutManager.VERTICAL,false));

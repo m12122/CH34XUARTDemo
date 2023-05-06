@@ -5,9 +5,5 @@
         xmlns:app="http://schemas.android.com/apk/res-auto"
         app:showAsAction="always"
         />
-    <item android:id="@+id/configGPIO"
-        android:title="GPIO"
-        xmlns:app="http://schemas.android.com/apk/res-auto"
-        app:showAsAction="always"
-        />
+
 </menu>
