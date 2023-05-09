@@ -8,6 +8,7 @@ import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.hardware.usb.UsbDevice;
 import android.os.Bundle;
+import java.io.IOException;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
@@ -18,6 +19,7 @@ import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import android.os.Looper;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -33,7 +35,6 @@ import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.nio.charset.StandardCharsets;
@@ -48,7 +49,9 @@ import java.util.concurrent.TimeUnit;
 
 
 import cn.wch.ch34xuartdemo.entity.EPC;
+import cn.wch.ch34xuartdemo.entity.JsonEntity;
 import cn.wch.ch34xuartdemo.entity.SerialBaudBean;
+import cn.wch.ch34xuartdemo.utils.ToastUtil;
 import cn.wch.uartlib.WCHUARTManager;
 import cn.wch.uartlib.callback.IDataCallback;
 import cn.wch.uartlib.callback.IUsbStateChange;
@@ -77,6 +80,7 @@ import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
+import com.google.gson.Gson;
 
 public class MainActivity extends AppCompatActivity {
     RecyclerView deviceRecyclerVIew;
@@ -87,24 +91,26 @@ public class MainActivity extends AppCompatActivity {
     public Button start_btn;
     private  ArrayList<EPC> epcList;
     public byte[] newepc = new byte[12];
-    public int epcflag = 0 ;
+    public int epcflag = 0 ;//epcflag == 0:没有前半截标签 ；== 1 ：有前半截标签；
+    public String EPChalf ="";
+    Gson gson=new Gson();
+    ArrayList<JsonEntity> jsonEntitylist = new ArrayList<>();
+    String selectedtLab;
+
 
     //接收区
     TextView readBuffer;
     CustomTextView clearRead;
-    SwitchCompat scRead;
     TextView readCount;
     //保存各个串口的接收计数
     HashMap<String, Integer> readCountMap = new HashMap<>();
     //已打开的设备列表
     final Set<UsbDevice> devices = Collections.synchronizedSet(new HashSet<UsbDevice>());
     //读线程
-    Thread readThread;
     boolean flag = false;
-    public int serialCount = -1;
 
     //接收文件测试。文件默认保存在-->内部存储\Android\data\cn.wch.wchuartdemo\files\下
-    private static boolean FILE_TEST = true;
+    private static boolean FILE_TEST = false;
 
     private static final String TAG = "okhttp";
 
@@ -140,21 +146,21 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
-    @Override
-    public void onDestroy() {
-        super.onDestroy();
-        //停止读线程
-        stopReadThread();
-        //停止文件测试
-        LogUtil.d("线程已销毁");
-        if (FILE_TEST) {
-            cancelLinks();
-        }
-        //关闭所有连接设备
-        closeAll();
-        //释放资源
-        WCHUARTManager.getInstance().close(this);
-    }
+//    @Override
+//    public void onDestroy() {
+//        super.onDestroy();
+//        //停止读线程
+//        stopReadThread();
+//        //停止文件测试
+//        LogUtil.d("线程已销毁");
+//        if (FILE_TEST) {
+//            cancelLinks();
+//        }
+//        //关闭所有连接设备
+//        closeAll();
+//        //释放资源
+//        WCHUARTManager.getInstance().close(this);
+//    }
 
     /**
      * 系统是否支持USB Host功能
@@ -206,9 +212,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 if(start_btn.getText().equals("开始盘点")){
-                    start_btn.setText("停止盘点");
                     showLabnumberdialog();
-                    startReading();
+                    start_btn.setText("停止盘点");
                 }else{
                     start_btn.setText("开始盘点");
                     stopReading();
@@ -350,11 +355,11 @@ public class MainActivity extends AppCompatActivity {
                 //将该设备添加至已打开设备列表,在读线程ReadThread中,将会读取该设备的每个串口数据
                 addToReadDeviceSet(usbDevice);
                 //用作文件对比测试,在打开每个设备时，对每个串口新建对应的保存数据的文件
-                if (FILE_TEST) {
-                    for (int i = 0; i < serialCount; i++) {
-                        linkSerialToFile(usbDevice, i);
-                    }
-                }
+//                if (FILE_TEST) {
+//                    for (int i = 0; i < serialCount; i++) {
+//                        linkSerialToFile(usbDevice, i);
+//                    }
+//                }
                 registerModemStatusCallback(usbDevice);
                 registerDataCallback(usbDevice);
             } else {
@@ -570,36 +575,28 @@ public class MainActivity extends AppCompatActivity {
                     LogUtil.d("bufferlength:"+length);
                     System.arraycopy(buffers, 0, bufer, 0, bufer.length);
                     //LogUtil.d("原始数据 ："+FormatUtil.bytesToHexString(bufer));
-                    byte[] epc = Trans.getEpc(bufer,length);
-                    //LogUtil.d("epc = "+FormatUtil.bytesToHexString(epc));
-                    //成功读到标签数据：更新
-                    if (epc != null ) {
-                        //加入epc列表
-                        LogUtil.d("原始数据 ："+FormatUtil.bytesToHexString(bufer));
-                        LogUtil.d("epc:"+FormatUtil.bytesToHexString(epc));
-                        if (epc[0]==0){
-                            System.arraycopy(epc,8,newepc,8,4);
-                            epcflag ++;
-                        } else if (epc[11] == 0) {
-                            System.arraycopy(epc,0,newepc,0,8);
-                            epcflag ++;
-                        }else{
-                            System.arraycopy(epc,0,newepc,0,12);
-                            epcflag= 2;
-                        }
-                    }else {
+                    List<byte[]>  result = Trans.getEpc(bufer,length);
+                    if (result.size() == 0){
                         LogUtil.d("没有读到标签");
-                    }
-                    if(epcflag == 2){
-                        epcflag=0;
-                        String spcstr = FormatUtil.bytesToHexString(newepc);
-                        boolean result = addToList(epcList,spcstr);
-                        if(result){
-                            updateReadDataToFile(usbDevice, serialNumber, newepc, newepc.length);
-                            updateReadData(usbDevice, serialNumber, newepc, newepc.length);
-                            LogUtil.d("保存epc！");
-                        }else{
-                            LogUtil.d("epc已经存在！");
+                    }else {
+                        for(byte[] epc:result){//增强for循环遍历set
+                            if(epc.length == 4 || epc.length ==8){//epc为半截
+                                if(epcflag == 0){//当前还没有前半截数据
+                                    EPChalf = FormatUtil.bytesToHexString(epc);
+                                    LogUtil.d("epc_4/8:"+EPChalf);
+                                    epcflag = 1;
+                                }else {
+                                    EPChalf=EPChalf.concat(FormatUtil.bytesToHexString(epc));
+                                    LogUtil.d("epc_4/8:"+EPChalf);
+                                    LogUtil.d("EPChalf:"+EPChalf);
+                                    epcflag = 0 ;
+                                    boolean re = addToList(usbDevice,epcList,EPChalf);//判断是否是重复标签
+                                    EPChalf = "";
+                                }
+                            }else if(epc.length == 12){//epc为完整的12个字节
+                                boolean re = addToList(usbDevice,epcList,FormatUtil.bytesToHexString(epc));
+                                LogUtil.d("12EPC:"+FormatUtil.bytesToHexString(epc));
+                            }
                         }
                     }
                 }
@@ -609,72 +606,9 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    @Deprecated
-    public class ReadThread extends Thread {
-
-        public ReadThread() {
-            flag = true;
-            setPriority(Thread.MAX_PRIORITY);
-        }
-
-        @Override
-        public void run() {
-            LogUtil.d("---------------开始读取数据");
-            while (flag) {
-                if (devices.isEmpty()) {
-                    continue;
-                }
-                //遍历已打开的设备列表中的设备
-                synchronized (devices) {
-                    Iterator<UsbDevice> iterator = devices.iterator();
-                    while (iterator.hasNext()) {
-                        UsbDevice device = iterator.next();
-                        try {
-                            serialCount = WCHUARTManager.getInstance().getSerialCount(device);
-                        } catch (Exception e) {
-                            LogUtil.d("线程错误");
-                            //e.printStackTrace();
-                        }
-                        //LogUtil.d("serialcount=="+serialCount);
-                        //读取该设备每个串口的数据
-//                        for (int i = 0; i < serialCount; i++) {
-//                            try {
-//                                byte[] bytes = WCHUARTManager.getInstance().readData(device, i);
-//                                LogUtil.d("读到的数据是  "+bytes);
-//                                if (bytes != null) {
-//                                    //使用获取到的数据
-//                                    LogUtil.d("读到数据");
-//                                    updateReadData(device, i, bytes, bytes.length);
-//                                    updateReadDataToFile(device, i, bytes, bytes.length);
-//                                }else{
-//                                    LogUtil.d("读到空数据");
-//                                }
-//                            } catch (Exception e) {
-//                                //LogUtil.d(e.getMessage());
-//                                LogUtil.d("读取错误");
-//                                onDestroy();
-//                                break;
-//                            }
-
-
-
-                    }
-                }
-            }
-            LogUtil.d("读取数据线程结束");
-            //onDestroy();
-        }
-    }
-
-    public void stopReadThread() {
-        if (readThread != null && readThread.isAlive()) {
-            flag = false;
-        }
-    }
-
-    private void updateReadData(@NonNull UsbDevice usbDevice, int serialNumber, byte[] buffer, int length) {
+    public  int updateReadData(@NonNull UsbDevice usbDevice, int serialNumber, byte[] buffer, int length) {
         if (buffer == null) {
-            return;
+            return -1;
         }
         runOnUiThread(new Runnable() {
             @Override
@@ -684,23 +618,19 @@ public class MainActivity extends AppCompatActivity {
                     readBuffer.setText("");
                     readBuffer.scrollTo(0, 0);
                 }
-
                 result = FormatUtil.bytesToHexString(buffer, length);
-                //String readBufferLogPrefix = FormatUtil.getReadBufferLogPrefix(usbDevice, serialNumber, integer);
-                //LogUtil.d(readBufferLogPrefix);
                 readBuffer.append("读到的标签号："+result + "\r\n");
                 LogUtil.d("读取到的数据" + result);
 
                 int offset = readBuffer.getLineCount() * readBuffer.getLineHeight();
-                //int maxHeight = usbReadValue.getMaxHeight();
                 int height = readBuffer.getHeight();
-                //USBLog.d("offset: "+offset+"  maxHeight: "+maxHeight+" height: "+height);
                 if (offset > height) {
                     //USBLog.d("scroll: "+(offset - usbReadValue.getHeight() + usbReadValue.getLineHeight()));
                     readBuffer.scrollTo(0, offset - readBuffer.getHeight() + readBuffer.getLineHeight());
                 }
             }
         });
+        return 0;
     }
 
 
@@ -726,61 +656,6 @@ public class MainActivity extends AppCompatActivity {
     //该Map的key是每个设备的串口，value是其对应的保存数据的文件的fileStream
     private HashMap<String, FileOutputStream> fileOutputStreamMap = new HashMap<>();
 
-    //用作文件对比测试,在打开每个设备时，每个串口都新建对应的保存数据的文件，其映射关系保存到fileOutputStreamMap中
-    private void linkSerialToFile(UsbDevice usbDevice, int serialNumber) {
-        LogUtil.d("linkSerialToFile:");
-        File testFile = getExternalFilesDir("TestFile");
-        File file = new File(testFile, WCHUARTManager.getInstance().getChipType(usbDevice).toString() + "_" + serialNumber + ".txt");
-        if (file.exists()) {
-            file.delete();
-        }
-        try {
-            boolean ret = file.createNewFile();
-            LogUtil.d("新建文件:" + ret);
-            FileOutputStream fileOutputStream = new FileOutputStream(file);
-            if (!fileOutputStreamMap.containsKey(FormatUtil.getSerialKey(usbDevice, serialNumber))) {
-                fileOutputStreamMap.put(FormatUtil.getSerialKey(usbDevice, serialNumber), fileOutputStream);
-            }
-        } catch (IOException e) {
-            LogUtil.d(e.getMessage());
-        }
-
-    }
-
-    //将接收到的数据保存至文件，用作对比
-    private void updateReadDataToFile(@NonNull UsbDevice usbDevice, int serialNumber, byte[] buffer, int length) {
-        updateToFile(usbDevice, serialNumber, buffer, length);
-    }
-
-    private void updateToFile(@NonNull UsbDevice usbDevice, int serialNumber, byte[] buffer, int length) {
-        if (fileOutputStreamMap.containsKey(FormatUtil.getSerialKey(usbDevice, serialNumber))) {
-            FileOutputStream fileOutputStream = fileOutputStreamMap.get(FormatUtil.getSerialKey(usbDevice, serialNumber));
-            try {
-                String data ="标签号： "+ FormatUtil.bytesToHexString(buffer, length)+"\r\n";
-                //byte[] result = FormatUtil.hexStringToBytes(data);
-                //byte[] result = data.getBytes(StandardCharsets.UTF_8);
-                fileOutputStream.write(data.getBytes(StandardCharsets.UTF_8), 0, length);
-                LogUtil.d("buffer: "+data);
-                fileOutputStream.flush();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    //结束保存至文件的功能,关闭Stream
-    private void cancelLinks() {
-        for (String s : fileOutputStreamMap.keySet()) {
-            FileOutputStream fileOutputStream = fileOutputStreamMap.get(s);
-            try {
-                fileOutputStream.flush();
-                fileOutputStream.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
     public void getRequest(View view) {
         OkHttpClient okHttpClient = new OkHttpClient.Builder()
                 .connectTimeout(1000, TimeUnit.MILLISECONDS)
@@ -788,23 +663,26 @@ public class MainActivity extends AppCompatActivity {
     }
 
     public void postFile() {
-        String url = "http://192.168.1.198:9102/file/upload";
-        //String url = "localhost:9102/file/upload";
-        OkHttpClient httpClient = new OkHttpClient.Builder().build();
-        File file = new File("/sdcard/Android/data/cn.wch.wchuartdemo/files/TestFile/CHIP_CH341_0.txt");
-        MediaType mediaType = MediaType.parse("text");
-        RequestBody fileBody = RequestBody.create(file, mediaType);
-        RequestBody requestBody = new MultipartBody.Builder()
-                .addFormDataPart("file", file.getName(), fileBody)
-                .build();
+        Gson gson1 = new Gson();
+        String jsonstr = gson1.toJson(jsonEntitylist);
+        System.out.println(jsonstr);
+        LogUtil.d(jsonstr);
+        String url = "http://192.168.1.195:9102/post/comment";
+        OkHttpClient httpClient = new OkHttpClient.Builder()
+                .connectTimeout(1000,TimeUnit.MILLISECONDS).build();
+        MediaType mediaType = MediaType.parse("application/json");
+        RequestBody requestBody =RequestBody.create(jsonstr,mediaType);
         Request request = new Request.Builder().url(url).post(requestBody).build();
         Call task = httpClient.newCall(request);
         task.enqueue(new Callback() {
             @Override
             public void onFailure(@NotNull Call call, @NotNull IOException e) {
                 Log.d(TAG, "上传失败--> " + e.toString());
-            }
+                Looper.prepare();
+                showUploadFailDialog();
+                Looper.loop();
 
+            }
             @Override
             public void onResponse(@NotNull Call call, @NotNull Response response) throws IOException {
                 int code = response.code();
@@ -816,11 +694,13 @@ public class MainActivity extends AppCompatActivity {
                         Log.d(TAG, "result ---> " + result);
                     }
                 }
+                if (code == 200){
+                    ToastUtil.create(MainActivity.this,"上传成功！");
+                }
             }
         });
     }
-
-    public void post(View view) {
+    public void post() {
         Thread uploadthread = new Thread(new Runnable() {
             @Override
             public void run() {
@@ -831,7 +711,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     //将读取的EPC添加到LISTVIEW
-    private boolean addToList(final List<EPC> list, final String epc){
+    private boolean addToList(UsbDevice usbDevice,final List<EPC> list, String epc){
         boolean flag = true;
         //第一次读入数据,列表为空
         if(list.isEmpty()){
@@ -839,6 +719,10 @@ public class MainActivity extends AppCompatActivity {
             epcTag.setEpc(epc);
             epcTag.setCount(1);
             list.add(epcTag);
+            JsonEntity jsonEntity = new JsonEntity(selectedtLab,epc);
+            jsonEntitylist.add(jsonEntity);
+            updateReadData(usbDevice, 0,
+                    FormatUtil.hexStringToBytes(epc), 12);
         }else{
             for(int i = 0; i < list.size(); i++){
                 EPC mEPC = list.get(i);
@@ -854,6 +738,10 @@ public class MainActivity extends AppCompatActivity {
                     newEPC.setEpc(epc);
                     newEPC.setCount(1);
                     list.add(newEPC);
+                    JsonEntity jsonEntity = new JsonEntity(selectedtLab,epc);
+                    jsonEntitylist.add(jsonEntity);
+                    updateReadData(usbDevice, 0,
+                            FormatUtil.hexStringToBytes(epc), 12);
                 }
             }
         }
@@ -910,6 +798,7 @@ public class MainActivity extends AppCompatActivity {
             showToast("发送成功！");
         }
     }
+
     public void showUploaddialog(){
         AlertDialog dialog=new AlertDialog.Builder(this)
                // .setIcon(R.drawable.hmbb)//设置图标
@@ -918,15 +807,15 @@ public class MainActivity extends AppCompatActivity {
                 .setNegativeButton("取消", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i) {
-                        Toast.makeText(MainActivity.this, "您点击了取消按钮", Toast.LENGTH_SHORT).show();
                         dialogInterface.dismiss();//销毁对话框
                     }
                 })
                 .setPositiveButton("确认上传", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        Toast.makeText(MainActivity.this, "点击了确认上传按钮的按钮", Toast.LENGTH_SHORT).show();
-
+                        Toast.makeText(MainActivity.this, "正在上传请 等待片刻~",
+                                Toast.LENGTH_SHORT).show();
+                        post();
                         dialog.dismiss();//销毁对话框
                     }
                 }).create();//create（）方法创建对话框
@@ -935,15 +824,14 @@ public class MainActivity extends AppCompatActivity {
     public void showLabnumberdialog(){
         //列出实验室编号
         final String[] labnumber = getResources().getStringArray(R.array.labnumber);
-        final boolean checkedItems[] = {true, false, false, false,true,true};
         AlertDialog dialog3 = new AlertDialog.Builder(this)
                 //.setIcon(R.drawable.hmbb)//设置标题的图片
                 .setTitle("选择你盘点的实验室号")//设置对话框的标题
                 //第一个参数:设置单选的资源;第二个参数:设置默认选中哪几项
-                .setMultiChoiceItems(labnumber, checkedItems, new DialogInterface.OnMultiChoiceClickListener() {
+                .setSingleChoiceItems(labnumber, 0, new DialogInterface.OnClickListener() {
                     @Override
-                    public void onClick(DialogInterface dialog, int i, boolean isChecked) {
-                        checkedItems[i] = isChecked;
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        selectedtLab = labnumber[i];
                     }
                 })
                 .setNegativeButton("取消", new DialogInterface.OnClickListener() {
@@ -955,15 +843,35 @@ public class MainActivity extends AppCompatActivity {
                 .setPositiveButton("确定", new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
-                        for (int i = 0; i < checkedItems.length; i++) {
-                            if (checkedItems[i]) {
-                                Toast.makeText(MainActivity.this, "选中了" + i +"实验室", Toast.LENGTH_SHORT).show();
-                            }
-                        }
                         dialog.dismiss();
+                        startReading();
+                        LogUtil.d("实验室号："+selectedtLab);
                     }
 
                 }).create();
         dialog3.show();
     }
+    public void showUploadFailDialog(){//上传失败对话框
+        AlertDialog dialog=new AlertDialog.Builder(this)
+                // .setIcon(R.drawable.hmbb)//设置图标
+                .setTitle("上传失败！")//设置标题
+                .setMessage("是否尝试重新上传？")//设置要显示的内容
+                .setNegativeButton("否", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        dialogInterface.dismiss();//销毁对话框
+                    }
+                })
+                .setPositiveButton("是", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialog, int which) {
+                        Toast.makeText(MainActivity.this, "正在上传请 等待片刻~",
+                                Toast.LENGTH_SHORT).show();
+                        postFile();
+                        dialog.dismiss();//销毁对话框
+                    }
+                }).create();//create（）方法创建对话框
+        dialog.show();//显示对话框
+    }
+
 }
